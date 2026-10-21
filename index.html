@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLYSS — Weapon &amp; Skill Damage Projection Calculator</title>
+<meta name="description" content="Enter your ATLYSS weapon's base damage and stat total, or a skill's base damage and power, to project damage per point from the game's own documented scaling formulas.">
+<style>
+  :root {
+    --bg: #14121a;
+    --panel: #1c1926;
+    --panel-border: #332d45;
+    --ink: #e9e6f0;
+    --ink-dim: #a099b3;
+    --accent: #7d5fc2;
+    --accent-bright: #a98af0;
+    --field-bg: #0f0d16;
+    --warn: #c2874f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 16px;
+  }
+  .sub {
+    color: var(--ink-dim);
+    font-size: 0.93rem;
+    margin: 0 0 28px;
+  }
+  .sub a { color: var(--accent-bright); }
+  .assumption-box {
+    background: rgba(125, 95, 194, 0.12);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    margin: 0 0 16px;
+  }
+  .assumption-box .label {
+    color: var(--accent-bright);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .stub-box {
+    background: rgba(194, 135, 79, 0.12);
+    border: 1px solid var(--warn);
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    margin: 0 0 16px;
+  }
+  .stub-box .label {
+    color: var(--warn);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    display: block;
+    margin-bottom: 4px;
+  }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  section h2 {
+    font-size: 1.1rem;
+    margin: 0 0 6px;
+  }
+  .section-note {
+    color: var(--ink-dim);
+    font-size: 0.85rem;
+    margin: 0 0 16px;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+  }
+  label.field-label {
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+  select, input[type="number"] {
+    width: 100%;
+    background: var(--field-bg);
+    color: var(--ink);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 9px 10px;
+    font-size: 1rem;
+  }
+  select:focus, input[type="number"]:focus {
+    outline: 1px solid var(--accent);
+  }
+  .output-box {
+    border-top: 1px solid var(--panel-border);
+    margin-top: 6px;
+    padding-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px;
+  }
+  .output-cell {
+    background: var(--field-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .output-cell .output-label {
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+    display: block;
+    margin-bottom: 3px;
+  }
+  .output-cell .output-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--accent-bright);
+  }
+  .output-cell .output-sub {
+    font-size: 0.75rem;
+    color: var(--ink-dim);
+    display: block;
+    margin-top: 3px;
+  }
+  .sources-section {
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+  }
+  .sources-section h2 { font-size: 1.05rem; }
+  .sources-section ol { margin: 6px 0 16px; padding-left: 22px; }
+  .sources-section li { margin-bottom: 8px; }
+  .sources-section a { color: var(--accent-bright); }
+  .sources-section .verified { color: var(--ink); font-weight: 600; }
+  .sources-section code {
+    background: var(--field-bg);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+  .self-test { font-size: 0.75rem; color: var(--ink-dim); margin-top: 10px; }
+  .self-test.ok { color: var(--accent-bright); }
+  .self-test.bad { color: var(--warn); }
+  footer {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+  }
+  footer a { color: var(--accent-bright); }
+</style>
+</head>
+<body>
+<main>
+  <h1>ATLYSS — Weapon &amp; Skill Damage Projection Calculator</h1>
+  <p class="sub">Stand at the enchanter with a weapon or skill tooltip open in
+  <a href="https://store.steampowered.com/app/2768430" target="_blank" rel="noopener">ATLYSS</a>,
+  type in the numbers it shows you, and see the projected damage range before you spend your next
+  stat point. Built from the game's own wiki-documented scaling formulas — nothing here is a
+  recommendation about which stat to pick, only the arithmetic. Runs entirely in your browser;
+  nothing is saved or sent anywhere.</p>
+
+  <section>
+    <h2>Weapon damage</h2>
+    <p class="section-note">Enter the weapon's base damage floor and ceiling from its tooltip, pick
+    which stat governs it, and type the stat total you're considering.</p>
+    <div class="assumption-box">
+      <span class="label">Source: Game Mechanics page, Damage Scaling table</span>
+      Damage Floor = base damage floor + (stat &times; 0.16). Damage Ceiling = base damage ceiling +
+      (stat &times; 0.24). Scaling is linear with no diminishing returns; results are rounded down
+      to the nearest whole number, same as the game. The optional cap field lets you enter the
+      weapon's own documented max damage range so the projection never reads past it — no weapon's
+      cap number is built into this page, since ATLYSS is active early access and those numbers
+      change with patches.
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label" for="weaponStatType">Governing stat</label>
+        <select id="weaponStatType">
+          <option value="attack">Attack Power (Strength weapons)</option>
+          <option value="dex">Dex Power (Dexterity weapons)</option>
+          <option value="magic">Magic Power (Mind weapons)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="weaponStatValue">Stat total</label>
+        <input type="number" id="weaponStatValue" min="0" step="1" value="0">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label" for="weaponBaseFloor">Weapon base damage floor</label>
+        <input type="number" id="weaponBaseFloor" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label class="field-label" for="weaponBaseCeiling">Weapon base damage ceiling</label>
+        <input type="number" id="weaponBaseCeiling" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label class="field-label" for="weaponCap">Weapon max damage cap (optional)</label>
+        <input type="number" id="weaponCap" min="0" step="1" value="0">
+      </div>
+    </div>
+    <div class="output-box" id="weaponOutputBox"></div>
+  </section>
+
+  <section>
+    <h2>Skill damage</h2>
+    <p class="section-note">Enter the skill's base damage and its power stat from the tooltip. For a
+    Vitality-scaling skill such as Siphon, enter your current max HP as the power value instead of a
+    stat total.</p>
+    <div class="stub-box">
+      <span class="label">Source: Skill page — marked an incomplete/stub page as of 2026-10-21</span>
+      Minimum damage = base damage + (power &times; 0.36). Maximum damage = minimum damage + 3.
+      This page is the wiki's own description and is self-labeled unfinished, so treat this section
+      with less confidence than the weapon-damage section above and verify it against your current
+      patch. (The wiki's separate Game Mechanics table also lists a "Skills" row using &times;0.36
+      for both ends instead of a flat +3 — the two live pages disagree; see Sources below for both
+      quotes. This calculator uses the Skill page's own explicit wording.)
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label" for="skillBaseDamage">Skill base damage</label>
+        <input type="number" id="skillBaseDamage" min="0" step="1" value="0">
+      </div>
+      <div class="field">
+        <label class="field-label" for="skillPower">Power stat total (or max HP if Vitality-based)</label>
+        <input type="number" id="skillPower" min="0" step="1" value="0">
+      </div>
+    </div>
+    <div class="output-box" id="skillOutputBox"></div>
+  </section>
+
+  <section class="sources-section">
+    <h2>Sources &amp; last verified date</h2>
+    <p class="verified">Both wiki pages fetched directly 2026-10-21. This page gives no build,
+    class, or weapon ranking anywhere — only the computed damage numbers for what you type in.</p>
+    <ol>
+      <li><strong>Weapon damage scaling</strong> —
+      <a href="https://atlyss.wiki.gg/wiki/Game_Mechanics" target="_blank" rel="noopener">atlyss.wiki.gg/wiki/Game_Mechanics</a>,
+      Damage Scaling section. Quoted directly: "Weapon damage scales with a particular stat
+      depending on the weapon type," "Damage scaling is linear with no diminishing returns," "A
+      weapon's damage cannot be increased past the max damage range for that weapon," and "any
+      decimal values are always rounded down to the nearest integer to give you your final value."
+      The page's table gives, for Strength/Dexterity/Mind weapon types: Damage Floor = Base Damage
+      Floor + (stat &times; 0.16), Damage Ceiling = Base Damage Ceiling + (stat &times; 0.24).
+      Strength weapons (Melee, Heavy Melee, Polearm) use Attack Power; Dexterity weapons (Katar,
+      Ranged) use Dex Power; Mind weapons (Scepter, Bell) use Magic Power. This page is a stable
+      mechanics reference, not a stub, so it leads this product.</li>
+      <li><strong>Skill damage</strong> —
+      <a href="https://atlyss.wiki.gg/wiki/Skill" target="_blank" rel="noopener">atlyss.wiki.gg/wiki/Skill</a>.
+      Quoted directly: "The minimum damage of skills can be calculated by taking 36% of the
+      respective skill's power" and "adding it to the base damage of the skill," then "The maximum
+      damage of skills can be calculated by adding 3 to the minimum damage." Also: "Skills that
+      scale off of Vitality, such as Siphon leech, use your maximum health as their 'power'." The
+      page carries its own notice: "This page is a stub. You can help the ATLYSS Wiki by expanding
+      it." — reproduced here as the reason this section is labeled lower-confidence.</li>
+      <li><strong>Conflicting table on the Game Mechanics page:</strong> that same page's Damage
+      Scaling table also lists a "Skills" row giving Damage Floor = Base Damage Floor + (Power
+      &times; 0.36) and Damage Ceiling = Base Damage Ceiling + (Power &times; 0.36) — i.e. the same
+      0.36 coefficient for both ends, which does not match the Skill page's flat "+3" maximum. The
+      two pages were fetched on the same date and disagree with each other; this calculator follows
+      the Skill page's own explicit wording for skill damage, since that page is the one the wiki
+      specifically dedicates to skill mechanics. Re-verify both pages against your current patch
+      before relying on either formula for a decision that matters.</li>
+      <li><strong>Weapon Mastery — explicitly NOT modeled:</strong> the Game Mechanics page also
+      states that Weapon Mastery multiplies a weapon's base damage by 1.4 under a separate table,
+      and that skill damage is unaffected by Mastery. This calculator does not include a Mastery
+      toggle — it projects from whatever base damage floor/ceiling you type in, so if your weapon
+      tooltip already reflects Mastery, the numbers you enter already include it.</li>
+      <li><strong>Level cap, patch-specific constants — explicitly NOT hardcoded:</strong> this
+      lane's own prior research found atlyss.wiki.gg version pages disagreeing on the level cap (40
+      on one page, 32 on a page citing a later patch). ATLYSS is active early access. No stat total,
+      base damage value, or weapon cap is pre-filled anywhere on this page for that reason — every
+      field starts at 0 and is read from your own current tooltip.</li>
+    </ol>
+    <p class="self-test" id="selfTest">running self-test…</p>
+  </section>
+</main>
+
+<footer>
+  Fan-made calculator, unaffiliated with the developers or publisher of ATLYSS. Figures above
+  reflect the wiki pages cited, fetched 2026-10-21 — the Skill page is self-marked incomplete and
+  the two wiki pages disagree on the skill maximum formula, so verify against your current patch
+  before relying on either number. No account, no server, no data leaves your browser.
+</footer>
+
+<script src="calc.js"></script>
+<script>
+(function () {
+  "use strict";
+  var C = window.ATLYSSCALC;
+
+  function num(id) {
+    var el = document.getElementById(id);
+    var v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  }
+
+  function cell(label, value, sub) {
+    var div = document.createElement("div");
+    div.className = "output-cell";
+    var l = document.createElement("span");
+    l.className = "output-label";
+    l.textContent = label;
+    var v = document.createElement("span");
+    v.className = "output-value";
+    v.textContent = value;
+    div.appendChild(l);
+    div.appendChild(v);
+    if (sub) {
+      var s = document.createElement("span");
+      s.className = "output-sub";
+      s.textContent = sub;
+      div.appendChild(s);
+    }
+    return div;
+  }
+
+  var STAT_LABELS = {
+    attack: "Attack Power",
+    dex: "Dex Power",
+    magic: "Magic Power"
+  };
+
+  function renderWeapon() {
+    var statType = document.getElementById("weaponStatType").value;
+    var statValue = num("weaponStatValue");
+    var baseFloor = num("weaponBaseFloor");
+    var baseCeiling = num("weaponBaseCeiling");
+    var cap = num("weaponCap");
+
+    var box = document.getElementById("weaponOutputBox");
+    box.innerHTML = "";
+
+    var r = C.weaponDamage({
+      baseFloor: baseFloor,
+      baseCeiling: baseCeiling,
+      statValue: statValue,
+      capValue: cap > 0 ? cap : undefined
+    });
+
+    if (!r) {
+      box.appendChild(cell("Damage floor", "—", "enter base damage and a stat total of 0 or more"));
+      box.appendChild(cell("Damage ceiling", "—", "enter base damage and a stat total of 0 or more"));
+      return;
+    }
+
+    var statLabel = STAT_LABELS[statType] || statType;
+    box.appendChild(cell("Damage floor", String(r.floor), "at " + statValue + " " + statLabel + (r.capped ? ", capped at weapon max" : "")));
+    box.appendChild(cell("Damage ceiling", String(r.ceiling), "at " + statValue + " " + statLabel + (r.capped ? ", capped at weapon max" : "")));
+  }
+
+  function renderSkill() {
+    var baseDamage = num("skillBaseDamage");
+    var power = num("skillPower");
+
+    var box = document.getElementById("skillOutputBox");
+    box.innerHTML = "";
+
+    var r = C.skillDamage({ baseDamage: baseDamage, power: power });
+
+    if (!r) {
+      box.appendChild(cell("Minimum damage", "—", "enter base damage and power of 0 or more"));
+      box.appendChild(cell("Maximum damage", "—", "enter base damage and power of 0 or more"));
+      return;
+    }
+
+    box.appendChild(cell("Minimum damage", String(r.min), "per the Skill page's stub formula"));
+    box.appendChild(cell("Maximum damage", String(r.max), "minimum + 3, per the Skill page"));
+  }
+
+  ["weaponStatType", "weaponStatValue", "weaponBaseFloor", "weaponBaseCeiling", "weaponCap"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", renderWeapon);
+    document.getElementById(id).addEventListener("change", renderWeapon);
+  });
+  ["skillBaseDamage", "skillPower"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", renderSkill);
+  });
+
+  renderWeapon();
+  renderSkill();
+
+  // In-page mirror of key headless known-answer tests in test.js, so opening the file directly
+  // also proves the math without a terminal.
+  (function selfTest() {
+    var el = document.getElementById("selfTest");
+    var pass = 0, total = 5;
+    var a = C.weaponDamage({ baseFloor: 10, baseCeiling: 20, statValue: 100 });
+    if (a.floor === 26 && a.ceiling === 44) pass++;
+    var b = C.weaponDamage({ baseFloor: 0, baseCeiling: 10, statValue: 37 });
+    if (b.floor === 5 && b.ceiling === 18) pass++;
+    var c = C.weaponDamage({ baseFloor: 10, baseCeiling: 20, statValue: 1000, capValue: 50 });
+    if (c.floor === 50 && c.ceiling === 50 && c.capped === true) pass++;
+    var d = C.skillDamage({ baseDamage: 8, power: 100 });
+    if (d.min === 44 && d.max === 47) pass++;
+    var e = C.skillDamage({ baseDamage: 3, power: 55 });
+    if (e.min === 22 && e.max === 25) pass++;
+    el.textContent = "self-test: " + pass + "/" + total + " known-answer scenarios passed";
+    el.className = "self-test " + (pass === total ? "ok" : "bad");
+  })();
+})();
+</script>
+</body>
+</html>
